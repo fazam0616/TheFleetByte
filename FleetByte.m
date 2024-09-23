@@ -123,9 +123,9 @@ function []=FleetByte(secs, map, debug)
 close all;
 %%%%%%%%%% YOU CAN ADD ANY VARIABLES YOU MAY NEED BETWEEN THIS LINE... %%%%%%%%%%%%%%%%%
 prevDir = [0 1 0];
-N = 10;
+N = 2;
 prevV = zeros(N,1)';
-prevPos = zeros(N,3)';
+prevPos = zeros(N,3);
 prevXYZ = [0 0 0];
 %%%%%%%%%% ... AND THIS LINE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -221,37 +221,44 @@ while(idx<=secs)               %% Main simulation loop
  currPos=[MPS(1) MPS(2) MPS(3)];       % Replace with your computation of position, the map is 512x512 pixels in size
  prevPos(N,:) = currPos;
  
- std = 1.5;
- norm = @(x) exp(-x.^2/(2*std^2))
- win = arrayfun(norm, [-1:1/N:1])
- win = win(1:N/2);
+ std = 0.5;
+ norm = @(x) exp(-x.^2/(2*std^2));
+ win = arrayfun(norm, [-1:1/N:1]);
+ win = win(1:N);
 
- if idx > N
-    filtered = filter(win, 1, prevPos);
-    xyz = mean(filtered)
+ % if idx > N
+ %    filtered = win'.*prevPos
+ %    xyz = sum(filtered, 1)/sum(win)
+ % else
+ %    xyz = mean(prevPos(N-idx+1:N,:),1)
+ % end
+ if idx == 1 
+    xyz = currPos;
+    vel = 0
+    delta = currPos/sqrt(currPos(1) ^ 2 + currPos(2)^2);
  else
-    xyz = mean(prevPos(N-idx+3:N))
+     xyz = (currPos + prevXYZ)/2;
+     delta=(xyz - prevXYZ);               % Replace with your computation for running direction, this should be a 2D unit vector
+     vel=sqrt(delta(1)^2 + delta(2)^2 + delta(3)^2) * 3.6;                  % Replace with your computation of running velocity, in Km/h 
  end
 
- delta=(xyz - prevPos);               % Replace with your computation for running direction, this should be a 2D unit vector
- vel=norm(delta(1:2)) * 3.6;                  % Replace with your computation of running velocity, in Km/h 
-  
- if (vel > 0)
-    delta = delta/vel;
- end
  
-
- if (idx == 1)
-     vel = 0;
- elseif (idx >= N)
-     prevV(N) = vel
-     vel = mean(prevV, "all");
- elseif idx > 3
-     prevV(N) = vel
-    vel = mean(prevV(N-idx+3:N), "all")
- else
-     prevV(N) = vel
- end
+ % if (vel > 0)
+ %    delta = delta/vel;
+ % end
+ % 
+ % 
+ % if (idx == 1)
+ %     vel = 0;
+ % elseif (idx >= N)
+ %     prevV(N) = vel;
+ %     vel = mean(prevV, "all");
+ % elseif idx > 3
+ %     prevV(N) = vel;
+ %    vel = mean(prevV(N-idx+3:N), "all");
+ % else
+ %     prevV(N) = vel;
+ % end
 
  
 dir1 = delta;
@@ -261,7 +268,7 @@ R=[cos(Rg) -sin(Rg) 0
 dir2 = prevDir * R;
 dir1 = (prevDir+delta)/2;
 if (idx == 1)
-    di = [1 0]
+    di = [1 0];
 else
     di = (dir1 + 0*dir2)/1;
 end
@@ -269,9 +276,9 @@ prevDir = delta;
 di = di(1:2);
 
 
-prevV = prevV(2:N);
-prevPos = prevPos(2:N);
-
+% prevV = prevV(2:N);
+% prevPos = prevPos(2:N, :);
+prevXYZ = xyz;
  if (debug==1)
      figure(5);clf;plot(HRS);
      fprintf(2,'****** For this frame: *******\n');
